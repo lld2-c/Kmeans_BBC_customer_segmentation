@@ -1,7 +1,9 @@
 <img src="picture/BBC.jpg" align="right" width = 150/>
 
 # Kmeans_BBC_customer_segmentation
->**TLDR**:coffee:	 This project aims to support BBC's mission to inform, educate, and entertain the UK population as a public service provider. Instead of financial profitability, the focus is to make the program offering of BBC iPlayer more engaging for the wider public. A classification model is implemented for customer segmentation based on streaming data. 
+
+## **TLDR**:coffee:	 
+- This project aims to support BBC's mission to inform, educate, and entertain the UK population as a public service provider. Instead of financial profitability, the focus is to make the program offering of BBC iPlayer more engaging for the wider public. A classification model is implemented for customer segmentation based on streaming data. 
 
 <img src="picture/kmeans.png">
 
