@@ -1,0 +1,1030 @@
+---
+title: "AM04 Group Assessment - Clustering"
+author: "Study Group 2 - Clemens Scherf, Edoardo Ferri, Hamish Thomas, Linli Ding, Yifan Yang"
+date: "`r Sys.Date()`"
+output: 
+    html_document:
+      number_sections: true
+      highlight: haddock
+      theme: spacelab
+      toc: yes
+      toc_depth: 2
+      toc_float:
+        collapsed: false
+      fontzize: 10pt
+---
+
+
+
+
+<!--begin html code: I will mark the html code in my markdown files, these are not directly related to the course material-->
+
+
+
+
+</style>
+<style>
+body {
+text-align: justify}
+
+</style>
+
+
+<style>
+img {
+  border-radius: 15px;
+}
+
+
+<style>
+div.grey { background-color:#808080; border-radius: 5px; padding: 20px; border-style: groove;}
+</style>
+
+<style>
+div.font {color="red"}
+</style>
+
+<style>
+div.navy1 { background-color:#686868; border-radius: 5px; padding: 20px; border-style: groove; color: #ffffff;}
+
+</style>
+
+
+<style>
+div.navy { background-color:#A2A2B6; border-radius: 5px; padding: 20px; border-style: groove; color: #ffffff;}
+
+</style>
+
+<!--end html code-->
+
+<div><img src="BBC.jpg" width="200px" align="right"></div>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(cluster)
+library(Hmisc)
+library(factoextra)
+library(purrr)
+library(gridExtra)
+library(ggpubr)
+library(hrbrthemes)
+```
+
+```{r setup2, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+<style>
+  .bottom-three {
+     margin-bottom: 3cm;
+  }
+</style>
+
+
+<p class="bottom-three">
+   
+</p>
+
+
+# Introduction and BBC iPlayer streaming data
+
+<div class = "navy1">
+
+The BBC is one of the oldest broadcasting organisations of the world. As a public service, its aim is to inform, educate, and entertain the UK population. Due to this broad mission, its key performance measures are not associated with financial profit but instead with how well it manages to engage the wider public with its program offering. To achieve its mission, it is particularly important to know which customer segments are interested in what content and how this drives their engagement with the BBC (often measured by how happy they are to pay for the TV licensing fees).
+
+Traditionally, the BBC reached its audience through terrestrial broadcasting, first analogue and then digital, which made it difficult to monitor public engagement. This had to been done retrospectively by monitoring a relatively small sample of representative consumers who consented to having their TV-watching habits observed and recorded. More recently, the BBC launched a digital TV streaming service, the BBC iPlayer, which allows streaming BBC content on demand. Besides being a more convenient way to deliver content to the public, the streaming service allows the BBC to get a more detailed perspective of public engagement. In time, this should allow the BBC to better predict how different customer segments react to the programs it offers and become more effective in informing, educating, and entertaining them. 
+
+
+The goal of this workshop is to use data mining techniques to gain a data-based view of BBC’s iPlayer customers and the content it provides.  
+
+i) In the first step we will process the raw data for analysis. We need to clean and enrich the data. I have already completed this step and this will not be the focus of this workshop. 
+
+ii)  We have an engagement based data and in the second step we will convert this to a user based data. Also we will engineer new features. The instructions for this step are provided in this RMarkdown file. Some of the code for these steps are provided and you are expected to complete the rest. (Expected time for completion: 45 minutes).
+
+iii) In the third step you will create meaningful customer segments for the users of the BBC iPlayer. In this step you will use K-Means, K-Medoid and H-Clustering methods to determine meaningful clusters for iPlayer viewers. The instructions for this step is provided in this RMarkdown file as well.
+
+The original data file contains information extracted from the BBC iPlayer database. The dataset was created by choosing approximately 10000 random viewers who watched something on iPlayer in January and then recording their viewing behaviour until the end of April. This means that customers who did not watch in January will not be in the dataset. Every row represents a viewing event. Given the way the data was created, during January the data is representative of what is watched on the iPlayer. After January the data is no longer representative as it is no longer a random sample of the people watching iPlayer content. 
+
+
+</div>
+
+# Assignment
+
+<div class = "navy1">
+Note that this is a group assignment therefore you only need to submit one submission per study group. There are several questions embedded in the document to guide your work. You do not need to explicitly answer these questions in your report however.
+
+You need to submit three files on canvas.
+<ol type="i">
+  <li>Technical report summarizing your findings. This is the main document we are going to grade. </li>
+  <ul >
+      <li>Please make sure you follow the [guidelines provided on canvas](https://learning.london.edu/courses/6253/assignments/30128).</li>
+    </ul>
+  <li>Your html file. Your report should use the results from this html file. </li>
+  <li>Your rmd file. Please make sure your rmd file knits. </li>
+</ol>  
+</div>
+
+# Learning Objectives
+
+<div class = "navy1">
+<ol type="i">
+<li> Applying clustering methods in a large data set. </li>
+<ul >
+      <li>What are the challenges and opportunities in dealing with a large data set in clustering?.</li>
+</ul>
+<li> How to use three different clustering methods. </li>
+<ul >
+      <li>K-Means.</li>
+      <li>K-Medoids.</li>
+      <li>Hierercahial Clustering.</li>
+      <li>What parameters can you control in each method? How do these parameters change your clustering results?</li>
+</ul>
+<li>Visualization of the results under different methods.</li>
+<ul >
+      <li>Visualizing distribution of the clusters.</li>
+      <li>Visualizing cluster centers.</li>
+      <li>Interpreting the results.</li>
+</ul>
+<li>Determining the appropriate number of clusters and choosing the meaningful clusters.</li>
+<ul >
+      <li>Compare clustering results of different methods.</li>
+      <li>Compare clustering results with different number of clusters.</li>
+</ul>
+<li> Sharing your findings from a technical analysis.</li>
+</ol>  
+</div>
+
+## How to get the most out of this exercise
+
+<div class = "navy1">
+
+First read the learning outcomes, which provides a list of things you should be doing in this exercise.
+
+Although this is a group exercise, I recommend you complete each step on your own before you confer with your teammates. The instructions and questions are designed to make you think about clustering beyond this specific example. Therefore, by going through these steps on your own, you will be able to meet the learning objectives I stated above.
+
+One way of achieving this would be setting a milestone for every step below. When all the group members achieve this milestone you can discuss what you find with your group mates.
+
+I do not recommend a division of labour among group members; as this will significantly reduce your learning from this exercise. 
+</div>
+# Cleaned Data
+
+I have already processed and cleaned the original view data. In this step you will first generate a user-based database which we will use to train clustering algorithms to identify meaningful clusters in the data.
+
+Let's load the cleaned data and investigate what's in the data. See below for column descriptions.
+
+```{r,Load data,message=FALSE,warning=FALSE}
+cleaned_BBC_Data <- read_csv(file="Results_Step1.csv",col_names = TRUE)
+library(dplyr)
+glimpse(cleaned_BBC_Data) 
+```
+
+<div class = "navy">
+The column descriptions are as follows.
+
+a)	user_id  -- a unique identifier for the viewer
+
+b)	program_id and series_id -- these identify the program and the series that the program belongs to
+
+c)	genre -- the programme’s genre (e.g., drama, factual, news, sport, comedy, etc)
+
+d)	start_date_time -- the streaming start date/time of the event
+
+e)	Streaming id -- a unique identifier per streaming event
+
+f)	prog_duration_min -- the program duration in minutes
+
+g)	time_viewed_min -- how long the customer watched the program in minutes
+
+h)  duration_more_30s - equals 1 if the program duration is more than 30 seconds, equals 0 otherwise 
+
+h)  time_viewed_more_5s - equals 1 if time_viewed is more than 5 seconds, equals 0 otherwise
+
+i)  percentage_program_viewed -- percantage of the program viewed
+
+j) watched_more_60_percent -- equals 1 if more than 60% of the program is watched, equals 0 otherwise
+
+k) month, day, hour, weekend -- timing of the viewing
+
+l) time_of_day -- equals “Night” if the viewing occurs between 22 and 6am, "Day" if it occurs between 6AM and 14, “Afternoon” if the it occurs between 14 and 17, “Evening” otherwise
+</div>
+
+Before we proceed let's consider the usage in January only.
+
+```{r,filter data,message=FALSE,warning=FALSE}
+
+cleaned_BBC_Data<-filter(cleaned_BBC_Data,month==1)
+```
+
+
+
+# User based data
+
+We will try to create meaningful customer segments that describe users of the BBC iPlayer service. First we need to change the data to user based and generate a summary of their usage. 
+
+
+## Data format
+
+
+The data is presented to us in an event-based format (every row captures a viewing event). However we need to detect the differences between the general watching habits of users. 
+
+How can you convert the current date set to a customer-based dataset (i.e., summarizes the general watching habits of each user). In what dimensions could BBC iPlayer users be differentiated? Can you come up with variables that capture these? Discuss these issues with your group and determine a strategy on how data must be processed
+
+## Feature Engineering
+
+
+
+For the workshop let’s generate the following variables for each user.
+
+
+i.	Total number of shows watched and ii.	Total time spent watching shows on iPlayer by each user in the data
+
+```{r,total number of shows and time,message=FALSE,warning=FALSE }
+userData<-cleaned_BBC_Data %>% group_by(user_id) %>% summarise(noShows=n(), total_Time=sum(time_viewed_min)) 
+```
+
+
+iii.	Proportion of shows watched during the weekend for each user.
+
+```{r,percentage weekend,message=FALSE,warning=FALSE}
+
+#Let's find the number of shows on weekend and weekdays
+userData2<-cleaned_BBC_Data %>% group_by(user_id,weekend) %>% summarise(noShows=n())
+
+#Let's find percentage in weekend and weekday
+userData3 = userData2%>% group_by(user_id) %>% mutate(weight_pct = noShows / sum(noShows))
+
+#Let's create a data frame with each user in a row.
+userData3<-select (userData3,-noShows)
+userData3<-userData3%>% spread(weekend,weight_pct,fill=0) %>%as.data.frame()
+#Let's merge the final result with the data frame from the previous step.
+userdatall<-left_join(userData,userData3,by="user_id")
+```
+
+
+iv.	Proportion of shows watched during different times of day for each user.
+
+```{r,percentage time of day,message=FALSE,warning=FALSE}
+
+#Code in this block follows the same steps above.
+userData2<-cleaned_BBC_Data %>% group_by(user_id,time_of_day) %>% summarise(noShows=n()) %>% mutate(weight_pct = noShows / sum(noShows))
+
+userData4<-select (userData2,-c(noShows))
+userData4<-spread(userData4,time_of_day,weight_pct,fill=0)
+
+userdatall<-left_join(userdatall,userData4,by="user_id")
+```
+
+> Question 1.	Find the proportion of shows watched in each genre by each user. Your code below.
+
+```{r,percentage by genre,message=FALSE,warning=FALSE}
+
+#Let's find the number of shows watched by each genre
+userData4<-cleaned_BBC_Data %>% group_by(user_id,genre) %>% summarise(noShows=n())
+
+
+#Let's find percentage in each genre
+userData5 = userData4%>% group_by(user_id) %>% mutate(weight_pct = noShows / sum(noShows))
+
+#Let's create a data frame with each user in a row.
+userData5<-select (userData5,-noShows)
+userData5<-userData5 %>% spread(genre,weight_pct,fill=0) %>% as.data.frame()
+#Let's merge the final result with the data frame from the previous step.
+userdatall<-left_join(userdatall,userData5,by="user_id")
+
+```
+
+
+> Question 2. Add one more variable of your own. Describe why this might be useful for differentating viewers in 1 or 2 lines. Your code below.
+
+The variable we choose is average percentage of program viewed. This might be useful because for some segments of customers, they watch the shows completely and are dedicated for the show. For example, sport program viewers. Therefore, this can potentially differentiate customers. 
+
+```{r,add one more variable,message=FALSE,warning=FALSE}
+#Let's add average percentage of program viewed for each user
+userData6 <- cleaned_BBC_Data %>% group_by(user_id) %>% summarise(avg_view_pct=mean(percentage_program_viewed))
+
+userdatall<-left_join(userdatall,userData6,by="user_id")
+
+```
+ 
+
+
+
+
+
+
+
+# Visualizing user-based data
+
+Next visualize the information captured in the user based data. Let's start with the correlations.
+
+```{r ,orrelations, message=FALSE, warning=FALSE, results='hide'}
+library("GGally")
+userdatall %>% 
+  select(-user_id) %>% #keep Y variable last
+  ggcorr(method = c("pairwise", "pearson"), layout.exp = 3,label_round=2, label = TRUE,label_size = 2,hjust = 1)
+
+```
+
+
+> Question 3. Which variables are most correlated? What's the implication of this for clustering?
+
+The variables that are most correlated are those that we would expect. Firstly, there is a perfect negative correlation between ‘weekend’ and ‘weekday’, as these variables represent the percentage of the user’s watch time that comes on the weekend and during the week respectively. The higher the percentage of a user's watchtime that occurs on the weekend, the lower the watchtime percentage will be during the week (and vice versa) - therefore, these variables have to have a perfectly negative correlation. 
+
+Additionally, there is a very strong positive correlation between ‘noShows’ and ‘total_Time’ - this is because, in general, the more different shows that a user watches, the longer we expect their total watch time to be. This however is not a perfect correlation, as there will be people who switch between shows very quickly, trying to find one they really like. 
+
+There are also fairly strong negative correlations between the different parameters for the time of day (‘Evening’, ‘Day’ & ‘Afternoon’) - this is also expected, as the larger proportion of watch time that occurs in the evening, the less that is likely to be done in the day and afternoon. We can also see some correlations between different show 'types' - for example there are notable negative correlations between genres like 'Sport' and 'Drama', as well as 'Factual' and 'Drama'. This makes sense, as people who like watching lots of drama are probably less likely to watch sport and documentaries. Most of the other variables exhibit fairly weak correlations. 
+
+The correlation between 'weekend' and 'weekday' as well as 'total_Time' and 'noShows' should be noted when we do our cluster analysis. Because these variables are close to being perfectly correlated, they essentially represent the same concept and we should therefore not include both of the variables in our cluster analysis, as it may provide higher weight to the concept than it should. Both 'weekend' and 'weekday' represent the concept of what time during the week the user watches iPlayer - this concept can be incorporated into our cluster analysis with just one of these variables - and therefore, we should not include both as this will provide unnescessary weighting to this concept. 
+
+
+
+
+
+
+> Question 4. Investigate the distribution of noShows and total_Time using box-whisker plots and histograms. Explain what you observe in 1-2 sentences. Are you worried about outliers?
+
+
+```{r,no show and total time,message=FALSE,warning=FALSE}
+
+ggplot(data = userdatall, aes(x = "", y = noShows)) + 
+  geom_boxplot() +
+  labs(title = "Boxplot for Number of Shows watched", x = "Number of Shows", y = "Value")+
+  scale_color_manual(values=c("#56B4E9"))+
+  NULL
+  
+ggplot(userdatall, aes(x = noShows))+
+  geom_histogram(bins = 100, color = "black", fill = "#56B4E9") +
+  labs(title = "Histogram for Number of Shows watched", x = "Number of Shows", y = "Count")+
+  NULL
+
+ggplot(data = userdatall, aes(x = "", y = total_Time)) + 
+  geom_boxplot() +
+  labs(title = "Boxplot for Total Time (iPlayer) watched", x = "Total Time (mins) ", y = "Value")+
+  scale_color_manual(values=c("#56B4E9"))+
+  NULL
+
+ggplot(userdatall, aes(x = total_Time))+
+  geom_histogram(bins = 100, color = "black", fill = "#56B4E9") +
+  labs(title = "Histogram for Total Time (iPlayer) watched", x = "Total Time (mins)", y = "Count")+
+  NULL
+```
+
+The boxplots and histograms above show us that the distributions for both variables (noShows & total_Time) are very positively skewed, which means there are significant positive outliers in both of these distributions/variables. The boxplots in particular highlight these huge positive outliers, which may in fact be erroneous and give the distributions this very skewed shape. 
+The effect of these outliers on our results really depends on the method of clustering used, but in the case of k-means clustering, we should be ‘worried’ about these results. This is because the outliers can affect the results by essentially shifting the centres of the clusters. 
+
+
+## Delete infrequent users
+
+Delete the records for users whose total view time is less than 5 minutes and who views 5 or fewer programs. These users are not very likely to be informative for clustering purposes. Or we can view these users as a ``low-engagement'' cluster. 
+
+
+```{r,delete,message=FALSE,warning=FALSE}
+userdata_red<-userdatall%>%filter(total_Time>=5)%>%filter(noShows>=5)
+ggplot(userdata_red, aes(x=total_Time)) +geom_histogram(binwidth=25)+labs(x="Total Time Watched (mins)", y= "Count")
+glimpse(userdata_red)
+```
+
+
+# Clustering with K-Means
+
+Now we are ready to find clusters in the BBC iPlayer viewers. We will start with the K-Means algorithm.
+
+## Training a K-Means Model
+
+Train a K-Means model. Start with 2 clusters and make sure you de-select `user_id` variable. Also don’t forget to scale the data. Use 50 random starts. Should we use more starts?
+
+* Use a higher "nstart" will increase the number of initial configurations of k centroids (in this case 2 controids). The splitting of data into the clusters is sensitive to the initial choice of centroids' configuration. In this case, by trying different configurations and picking the best one, this bias is reduced. After increasing "nstar", it was found that the size of the 2 clusters did not change, thus we come to the conclusion that 50 is enough and we do not need a higher number (which is computationally slightly more expensive).
+
+Also display the cluster sizes. See the RMarkdown file from the last session to identify the R functions you need for this and the tasks below.
+
+Use `summary("kmeans Object")` to examine the components of the results of the clustering algorithm. How many points are in each cluster?
+
+```{r,fit kmean k2,message=FALSE,warning=FALSE}
+
+userdata_train <- userdata_red %>% 
+  # Get rid of variables that you might not need. Do not include no shows as well because it is highly correlated with total time
+  select(-user_id, -noShows, -weekday) %>% 
+  #log transform total time to reduce the impact of outliers 
+  mutate(total_Time = log(total_Time)) 
+  
+#scale the data
+userdata_train2<-data.frame(scale(userdata_train))
+
+
+#train kmeans clustering
+model_kmeans_2clusters<-eclust(userdata_train2, "kmeans", k = 2,nstart = 50, graph = FALSE)
+
+
+#add clusters to the data frame
+userdata_withClusters<-mutate(userdata_train2, cluster = as.factor(model_kmeans_2clusters$cluster))
+
+```
+
+```{r,examine the clusters,message=FALSE,warning=FALSE}
+#Check the components of this object.
+summary(model_kmeans_2clusters)
+
+#Size of the clusters
+
+model_kmeans_2clusters$size
+
+```
+* There are 2390 points in one cluster and 1235 points in the other.
+
+
+## Visualizing the results
+
+### Cluster centers 
+Plot the normalized cluster centers. Try to describe the clusters that the algorithm suggests. 
+
+```{r,cluster centers,message=FALSE,warning=FALSE}
+#Plot centers for k=2
+
+#First generate a new data frame with cluster centers and cluster numbers
+cluster_centers <- data.frame(cluster=as.factor(c(1:2)),model_kmeans_2clusters$centers)
+
+#transpose this data frame
+cluster_centers_t <- cluster_centers %>% gather(variable,value,-cluster,factor_key = TRUE)
+
+#plot the centers
+graphkmeans_2clusters <- ggplot(cluster_centers_t, aes(x = variable, y = value))+  
+  geom_line(aes(color =cluster,group = cluster), linetype = "dashed",size=1)+     
+  geom_point(size=1,shape=4)+ 
+  geom_hline(yintercept=0)+
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  labs(title = "K-means Centers k=2",
+       x = "Variable", y = "Mean value") +
+  guides(color=guide_legend("Cluster"))
+  
+graphkmeans_2clusters
+```
+
+Can you interpret each cluster from this plot? Did you arrive at meaningful clusters?
+
+* The blue cluster contains viewers that have a shorter total watching time and prefer to watch in the afternoon (daytime). The pink cluster contains viewers that have a longer total watching time and prefer to watch in the evening (night). These clusters also have a significant difference in their preferred genres. The day-watchers (more likely to be children) like "Factual", "Learning", "Music", "News" and "Sports" contents while the other cluster prefers "Comedy" and "Drama". They are also more likely to complete the show. According to these two clusters, we can roughly conclude that the active users like to use iPlayer during night time and like entertaining contents.
+
+How can you use the cluster information to improve the viewer experience with BBC iPlayer? We will come back to these points below. However it is important to think about these issues at the beginning.
+
+* BBC can use the cluster information to build a recommendation system which can advertise TV series that are likely to be welcomed by the major cluster at different time of day and also on different day of week. For example, based on which cluster the customer is in or is likely to be in, BBC can personalise the homepage using the characteristics of the cluster. For cluster 1 in which viewers like to watch drama at evenings, they can push notifications to them later in the day at when they are likely to be active and recommend contents that are liked by their "neighbours" in the cluster.
+
+### Clusters vs variables
+
+Plot a scatter plot for the viewers with respect to total_Time and weekend variables with color set to the cluster number of the user. What do you observe? Which variable seems to play a more prominent role in determining the clusters of users?
+
+```{r,distribution wrt. variables,message=FALSE,warning=FALSE}
+
+ggplot(data = userdata_withClusters) +
+  geom_jitter(aes(x = total_Time, y = weekend, color =  as.factor(cluster)),
+              alpha = 0.5)+
+  labs(title = "The two clusters have a prominent difference in total time of watching",
+       subtitle = "Scatter plot of whether the viewers' have watched on weekends and their total watching time ",
+       x = "Total time", y = "Weekend 
+       (+ve means more time spent watching on weekends)",
+       color = "Cluster") +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        plot.title = element_text(size = 13, face = "bold")) 
+
+  
+# Note that geom_jitter adds a small noise to each observation so that we can see overlapping points
+
+
+```
+
+* If we look across the horizontal axis (total time), the pink dots are majorly on the right while the blue dots are distributed further relatively on the left. If we look across the vertical axis (weekend), the pink dots are more dense in the bottom but the difference between the different clusters is not as large as what we see in total time. In other words, the distributions of pink dots and blue dors are simialr. This indicates that compared to total time, weekend is a less prominent factor in differentiating the 2 clusters.
+
+
+### Clusters vs PCA components
+
+Repeat the previous step and use the first two principle components using `fviz_cluster` function.
+```{r,cluster centers 2,message=FALSE,warning=FALSE}
+kmeans_c2_pca <- fviz_cluster(model_kmeans_2clusters, userdata_train2, palette = "Set2", ggtheme = theme_minimal()) +
+  labs(title = "K-means at k = 2 with log transformation") +
+  theme(text = element_text(size = 10),
+        plot.title = element_text(size = 12, face = "bold", vjust = 2)) 
+kmeans_c2_pca 
+```
+
+
+
+### Clusters vs PCA components without log transform
+
+As a "side exercise", use K-means method again but this time do not log transform `total time` and include `no_shows` as well. Compare your results to the case when you use log transformation. Then visualize the first two principle components using `fviz_cluster` function.
+
+```{r,cluster centers without log transform,message=FALSE,warning=FALSE}
+
+userdata_train3 <- userdata_red %>% 
+  # Get rid of variables that you might not need
+  select(-user_id, -weekday)
+  
+#scale the data
+userdata_train4 <- data.frame(scale(userdata_train3))
+
+
+
+#train kmeans clustering
+model2_kmeans_2clusters_no_log <- eclust(userdata_train4, "kmeans", k = 2,nstart = 50, graph = FALSE)
+
+
+#add clusters to the data frame
+userdata_withClusters2 <- mutate(userdata_train4, cluster = as.factor(model2_kmeans_2clusters_no_log$cluster))
+
+#plot two principle components
+fviz_cluster(model2_kmeans_2clusters_no_log, userdata_train4, palette = "Set2", ggtheme = theme_minimal()) +
+  labs(title = "K-means at k = 2 without log transformation") +
+  theme(text = element_text(size=10),
+        plot.title = element_text(size = 12, face = "bold", vjust = 2)) 
+
+```
+
+```{r,compare without log,message=FALSE,warning=FALSE}
+# Information of the 2-cluster model with log transformation
+summary(model_kmeans_2clusters)
+paste0("Sizes of clusters: ",model_kmeans_2clusters$size[1]," and ",model_kmeans_2clusters$size[2])
+
+# Information of the 2-cluster model without log transformation
+summary(model2_kmeans_2clusters_no_log)
+paste0("Sizes of clusters: ",model2_kmeans_2clusters_no_log$size[1]," and ",model2_kmeans_2clusters_no_log$size[2])
+
+```
+
+Do you observe any outliers? 
+
+* Yes.
+
+* The distribution of observations are different when we choose whether to use log transformation on ‘total_time’, with one model having cluster sizes of 2390/1235 (log) and the other being 3443/182 (no log). In the previous model (log transformation), the log transformation has both enlarged the difference between the two clusters on Dim1 and shortened that within the clusters. This has created a well separated PCA diagram in which the two clusters can be clearly distinguished. 
+In the above model (no log), Dim1 has a larger span and cluster 2 has taken most of the range on Dim1 because of outliers at middle and far right. This has squeezed cluster 1 to the far left. In conclusion, using log transformation has mitigated the effect of skewness and outliers.
+
+
+## Elbow Chart
+
+Produce an elbow chart and identify a reasonable range for the number of clusters. 
+
+```{r,elbow,message=FALSE,warning=FALSE}
+#Here is a short way of producing the elbow chart using "fviz_nbclust" function. 
+fviz_nbclust(userdata_train2,kmeans, method = "wss")+
+  labs(subtitle = "Elbow method")
+```
+
+## Silhouette method
+
+Repeat the previous step for Silhouette analysis.
+
+```{r,Silhouette,message=FALSE,warning=FALSE}
+fviz_nbclust(userdata_train2, kmeans, method = "silhouette",k.max = 15)+
+  labs(subtitle = "Silhouette method")
+
+```
+
+
+> Question 5: Summarize the conclusions of your Elbow Chart and Silhoutte analysis. What range of values for the number of clusters seems more plausible?
+
+* For the first elbow plot, SSE did not stabilise within k = 10, thus we will be looking for points in the middle to ensure that we can have a relatively low SSE while not over fitting the data. In Silhouette analysis, we will be looking for points with high silhouette width but still keep in mind the problem of over fitting. Overall, the best possible values located for k from 4 to 7.
+
+
+## Comparing k-means with different k
+
+>Question 6: For simplicity let's focus on lower values. Now find the clusters using kmeans for k=3, 4 and 5. Plot the centers and check the number of observations in each cluster. Based on these graphs which one seems to be more plausible? Which clusters are observable in each case? Don't forget to check the cluster sizes.
+
+
+```{r,different k,message=FALSE,warning=FALSE}
+
+userdata_train <- userdata_red %>% 
+  # Get rid of variables that you might not need. Do not include no shows as well because it is highly correlated with total time
+  select(-user_id, -noShows, -weekday) %>% 
+  #log transform total time to reduce the impact of outliers 
+  mutate(total_Time = log(total_Time)) 
+  
+#scale the data
+userdata_train2<-data.frame(scale(userdata_train))
+
+
+#Fit kmeans models with 3 clusters
+#train kmeans clustering
+model_kmeans_3clusters<-eclust(userdata_train2, "kmeans", k = 3,nstart = 50, graph = FALSE)
+#add clusters to the data frame
+userdata_with3Clusters<-mutate(userdata_train2, cluster = as.factor(model_kmeans_3clusters$cluster))
+
+
+
+#Fit kmeans models with 4 clusters
+#train kmeans clustering
+model_kmeans_4clusters<-eclust(userdata_train2, "kmeans", k = 4,nstart = 50, graph = FALSE)
+#add clusters to the data frame
+userdata_withClusters<-mutate(userdata_train2, cluster = as.factor(model_kmeans_4clusters$cluster))
+
+
+#Fit kmeans models with 5 clusters
+#train kmeans clustering
+model_kmeans_5clusters<-eclust(userdata_train2, "kmeans", k = 5,nstart = 50, graph = FALSE)
+#add clusters to the data frame
+userdata_withClusters<-mutate(userdata_train2, cluster = as.factor(model_kmeans_5clusters$cluster))
+
+
+
+```
+
+```{r,size of different k,message=FALSE,warning=FALSE}
+#check the size of clusters for each model
+paste0("Sizes of clusters at k = 3: ",model_kmeans_3clusters$size[1],", ",model_kmeans_3clusters$size[2]," and ",model_kmeans_3clusters$size[3])
+
+paste0("Sizes of clusters at k = 4: ",model_kmeans_4clusters$size[1],", ",model_kmeans_4clusters$size[2],", ",model_kmeans_4clusters$size[3]," and ",model_kmeans_4clusters$size[4])
+
+paste0("Sizes of clusters at k = 5: ",model_kmeans_5clusters$size[1],", ",model_kmeans_5clusters$size[2],", ",model_kmeans_4clusters$size[3],", ",model_kmeans_4clusters$size[4]," and ",model_kmeans_5clusters$size[5])
+```
+
+* The difference between cluster size decreases as we increase the value of k (i.e clusters become more similar in terms of size). When k is 3, the clusters have more "unique" characteristics than when k is 5. Having more clusters is like splitting the large clusters into smaller ones. Therefore, the data points within the large clusters will not be as distinguishable as points across clusters.
+
+
+```{r different k pca, fig.height=14, fig.width=8,message=FALSE,warning=FALSE}
+#PCA visualizations
+
+# plots to compare
+#I use the fviz_cluster function which is part of the`factoextra` library
+p1 <- fviz_cluster(model_kmeans_3clusters, geom = "point", data = userdata_train2) + 
+  ggtitle("K-means at k = 3") +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        plot.title = element_text(size = 12, face = "bold", vjust = 2)) 
+
+p2 <- fviz_cluster(model_kmeans_4clusters, geom = "point", data = userdata_train2) + 
+  ggtitle("K-means at k = 4") +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        plot.title = element_text(size = 12, face = "bold", vjust = 2))
+
+p3 <- fviz_cluster(model_kmeans_5clusters, geom = "point", data = userdata_train2) + 
+  ggtitle("K-means at k = 5") +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        plot.title = element_text(size = 12, face = "bold", vjust = 2))
+
+library(gridExtra)
+grid.arrange(p1, p2,p3, ncol = 1) 
+
+
+```
+
+* In the above PCA plots, we can see that as we increase the number of clusters, there are more and more overlap between the clusters. When k = 3, the range of each cluster is so big that some points are not strongly related to the others within the same cluster. There is still room to subset the clusters. When k = 5, cluster 2 and 5 largely overlap (thus can be very similar) and it will also be difficult to interpret the characteristics of the clusters. The middle plot (k = 4) seem most reasonable among the three plots. Although there is still overlap present, the clusters are relatively more "independent" and the sizes of the clusters are more "reasonable".
+
+* It has been noticed that some clusters are constantly present in each model. For example, cluster 3 in the top plot is very similar to cluster 2 in the middle plot and cluster 3 in the bottom plot. Cluster 2 in the top plot is similar to cluster 3 in the middle plot and cluster 1 in the bottom plot. 
+
+
+```{r,different k centres,fig.width=8, fig.height = 14,message=FALSE,warning=FALSE}
+#Plot centers
+
+#Plot centers for k=3
+#First generate a new data frame with cluster centers and cluster numbers
+cluster_centers <- data.frame(cluster=as.factor(c(1:3)),model_kmeans_3clusters$centers)
+#transpose this data frame
+cluster_centers_t <- cluster_centers %>% gather(variable,value,-cluster,factor_key = TRUE)
+#plot the centers
+graphkmeans_3clusters <- ggplot(cluster_centers_t, aes(x = variable, y = value))+  
+  geom_line(aes(color =cluster,group = cluster), linetype = "dashed",size=1)+ 
+  geom_point(size=1,shape=4)+
+  geom_hline(yintercept=0)+
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  labs(title = "K-means Centers k=3",
+       x = "Variable", y = "Mean value") +
+  guides(color=guide_legend("Cluster"))
+
+  
+  
+
+#Plot centers for k=4
+#First generate a new data frame with cluster centers and cluster numbers
+cluster_centers <- data.frame(cluster=as.factor(c(1:4)),model_kmeans_4clusters$centers)
+#transpose this data frame
+cluster_centers_t <- cluster_centers %>% gather(variable,value,-cluster,factor_key = TRUE)
+#plot the centers
+graphkmeans_4clusters <- ggplot(cluster_centers_t, aes(x = variable, y = value))+  
+  geom_line(aes(color =cluster,group = cluster), linetype = "dashed",size=1)+ 
+  geom_point(size=1,shape=4)+
+  geom_hline(yintercept=0)+
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  labs(title = "K-means Centers k=4",
+       x = "Variable", y = "Mean value") +
+  guides(color=guide_legend("Cluster"))
+
+#Plot centers for k=5
+#First generate a new data frame with cluster centers and cluster numbers
+cluster_centers <- data.frame(cluster=as.factor(c(1:5)),model_kmeans_5clusters$centers)
+#transpose this data frame
+cluster_centers_t <- cluster_centers %>% gather(variable,value,-cluster,factor_key = TRUE)
+#plot the centers
+graphkmeans_5clusters <- ggplot(cluster_centers_t, aes(x = variable, y = value))+  
+  geom_line(aes(color =cluster,group = cluster), linetype = "dashed",size=1)+ 
+  geom_point(size=1,shape=4) +
+  geom_hline(yintercept=0) +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  labs(title = "K-means Centers k=5",
+       x = "Variable", y = "Mean value") +
+  guides(color=guide_legend("Cluster"))
+
+grid.arrange(graphkmeans_3clusters, graphkmeans_4clusters,graphkmeans_5clusters, ncol = 1)
+
+```
+
+* From the above plot, we can again sense the repetition of clusters as we increase the value of k. Cluster 2 at k = 3 is similar to cluster 3 at k = 4 and cluster 1 at k = 5. Cluster 1 at k = 3 is similar to cluster 4 at k = 4 and cluster 4 at k = 5.
+
+
+
+# Comparing results of different clustering algorithms
+
+## PAM
+
+Fit a PAM model for the k value you chose above for k-means. Determine how many points each cluster has. Plot the centers of the clusters and produce PCA visualization.
+
+
+
+```{r,pam at k4,message=FALSE,warning=FALSE}
+
+#PAM clustering with `k` as the number of clusters
+k=4
+k4_pam <- eclust(userdata_train2, "pam", k = k, graph = FALSE)
+#Let's see the cluster sizes
+k4_pam$medoids
+
+#First we generate a new data frame with cluster medoids and cluster numbers
+cluster_medoids<-data.frame(cluster=as.factor(c(1:k)),k4_pam$medoids)
+
+#then transpose this data frame
+cluster_medoids_t<-cluster_medoids %>% 
+  gather(variable,value,-cluster,factor_key = TRUE) 
+
+#Visualise the centres
+userdata_withClusters <- mutate(userdata_train2, 
+                                   cluster = as.factor(k4_pam$cluster))
+#Size of clusters
+userdata_withClusters %>% count(cluster)
+```
+
+```{r,pam centres,message=FALSE,warning=FALSE}
+center_locations <- userdata_withClusters %>% 
+  group_by(cluster) %>% 
+  summarize_at(vars(total_Time:avg_view_pct),mean)
+
+#Next we use gather to collect information together
+pam3c <- gather(center_locations, key = "variable", value = "value",-cluster,factor_key = TRUE)
+
+#then we use ggplot to visualize centers
+pamcenters<-ggplot(pam3c, aes(x = variable, y = value)) +  
+  geom_line(aes(color = cluster,group = cluster), linetype = "dashed",size=1) + 
+  geom_point(size=2,shape=4)+geom_hline(yintercept=0) +
+  ggtitle(paste("PAM Centers k=",k)) +
+  labs(fill = "Cluster",x = "Variable") +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  scale_colour_manual(values = c("darkgreen", "orange", "red","blue"))
+
+
+pamcenters
+
+
+```
+
+```{r,pam pca,message=FALSE,warning=FALSE}
+k4_pam_pca <- fviz_cluster(k4_pam, geom = "point", data = userdata_train2) + ggtitle("PAM at k = 4") + 
+  #scale_colour_manual(values = c("darkgreen", "orange", "red","blue")) +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        plot.title = element_text(size = 12, face = "bold", vjust = 2)) 
+k4_pam_pca
+```
+
+
+
+
+
+## H-Clustering
+
+Use Hierarchical clustering with the same k you chose above. Set hc_method equal to `average` and then `ward.D`. What differences do you observe between the results of these two methods? Visualize the results using dendrograms. How many points does each cluster have? Plot the centers of the clusters and produce PCA visualization.
+
+```{r,h-cluster average,message=FALSE,warning=FALSE}
+
+#First we find the distances between points.
+#Then we determine how to form the clusters
+
+#For the "average" method
+res.dist <- dist(userdata_train2, method = "euclidean")
+
+res.hc1 <-  hcut(res.dist, hc_method = "average",k=4)
+
+summary(res.hc1)
+
+fviz_silhouette(res.hc1)
+
+plot(res.hc1,hang = -1, cex = 0.5)
+```
+
+```{r,h-cluster ward d,message=FALSE,warning=FALSE}
+#For the "ward.D" method
+
+res.hc2 <-  hcut(res.dist, hc_method = "ward.D",k=4)
+
+summary(res.hc2)
+
+fviz_silhouette(res.hc2)
+
+plot(res.hc2,hang = -1, cex = 0.5)
+```
+
+
+```{r,hclust centres,fig.width=6,fig.height=8,message=FALSE,warning=FALSE}
+#First let's find the averages of the variables by cluster 
+userdata_withClusters <- mutate(userdata_train2, 
+                                   cluster = as.factor(res.hc1$cluster))
+
+center_locations1 <- userdata_withClusters %>% 
+  group_by(cluster) %>% 
+  summarize_at(vars(total_Time:avg_view_pct),mean)
+
+#Next I use gather to collect information together
+hc1<- gather(center_locations1, key = "variable", value = "value",-cluster,factor_key = TRUE)
+
+#Next I use ggplot to visualize centers
+hclust_centre1 <- ggplot(hc1, aes(x = variable, y = value,order=cluster)) +  
+  geom_line(aes(color = cluster,group = cluster), linetype = "dashed",size=1) + geom_point(size=2,shape=4)+geom_hline(yintercept=0)+ggtitle("H-clust k=4 using average") +
+  labs(fill = "Cluster") +
+  theme_minimal()+
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  scale_colour_manual(values = c("darkgreen", "orange", "red","blue")) 
+
+# Repeat for "ward.D"
+userdata_withClusters <- mutate(userdata_train2, 
+                                   cluster = as.factor(res.hc2$cluster))
+
+center_locations2 <- userdata_withClusters %>% 
+  group_by(cluster) %>% 
+  summarize_at(vars(total_Time:avg_view_pct),mean)
+
+#Next I use gather to collect information together
+hc2<- gather(center_locations2, key = "variable", value = "value",-cluster,factor_key = TRUE)
+
+#Next I use ggplot to visualize centers
+hclust_centre2 <- ggplot(hc2, aes(x = variable, y = value,order=cluster)) +  
+  geom_line(aes(color = cluster,group = cluster), linetype = "dashed",size=1) + geom_point(size=2,shape=4)+geom_hline(yintercept=0)+ggtitle("H-clust k=4 using ward.D") +
+  labs(fill = "Cluster") +
+  theme_minimal()+
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  scale_colour_manual(values = c("darkgreen", "orange", "red","blue")) 
+
+grid.arrange(hclust_centre1,hclust_centre2,ncol = 1)
+```
+```{r,hclust pca,fig.width=8,fig.height=14,message=FALSE,warning=FALSE}
+
+k4_hc1 <- fviz_cluster(res.hc1, geom = "point", data = userdata_train2) + ggtitle("H-clust at k = 4 using average") + 
+  #scale_colour_manual(values = c("darkgreen", "orange", "red","blue")) +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        plot.title = element_text(size = 12, face = "bold", vjust = 2)) 
+
+k4_hc2 <- fviz_cluster(res.hc2, geom = "point", data = userdata_train2) + ggtitle("H-clust at k = 4 using ward.D") + 
+  #scale_colour_manual(values = c("darkgreen", "orange", "red","blue")) +
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        plot.title = element_text(size = 12, face = "bold", vjust = 2)) 
+
+grid.arrange(k4_hc1,k4_hc2,ncol = 1)
+```
+
+* We can see from the above results that the "ward.D" method is much better than the "average" method. The clusters produced using ward.D have higher interpretability.
+
+## Compare the results
+
+
+```{r,compare centres,fig.height=14,fig.width=8,message=FALSE,warning=FALSE}
+
+grid.arrange(pamcenters,graphkmeans_4clusters,hclust_centre2,ncol = 1)
+
+```
+
+```{r,compare pca,message=FALSE,warning=FALSE,fig.height=14,fig.width=8}
+
+grid.arrange(k4_pam_pca,p2,k4_hc2,ncol = 1)
+
+```
+
+>Question 7: Based on the results of these three methods, what can you conclude?
+
+While the k-means algorithm identifies 4 distinct clusters, their characteristics are different across different clustering methods. Despite this difference, some clusters are present in all 3 methods. This means that our choice of k is sensible. Among the 3 methods, k-means seems to be the best one as the clusters it produced is of the highest interpretability. For H-clust, the "News" + "Sports" + "Weather" + "High total time" cluster makes less sense than the "Sports" + "Low total time" cluster in k-means, which could be the customers who only watch when there is sports games on live. For PAM, the "Children" + "Learning" + "Entertainment" + "Music" + "Sports" is not sensible as well, compared to the "Children" + "Learning" + "Lowest total time" cluster in k-means.
+
+Following our extensive quantitative analysis using various algorithms, we can now identify 4 distinct customer clusters. The first cluster involves viewers who consume comedy and drama genres during the evenings, thus most likely being working professionals. The second cluster we identified, revolves around daytime viewers of sports and news. The third cluster involves afternoon consumption of factual and children shows, so we can conclude that this cluster revolves around children coming home from school and turning on their TV. Our fourth and last cluster involves night time viewers of entertainment and sports, most likely adults trying to unwind from a long day at work. 
+
+# Subsample check
+
+At this stage you must have chosen the number of clusters. We will try to reinforce your conclusions and verify that they are not due to chance by dividing the data into two equal parts. Use K-means clustering, fixing the number of clusters to your choice, in these two data sets separately. If you get similar looking clusters, you can rest assured that you conclusions are robust. If not you might want to reconsider your decision.
+
+```{r,out of sample check,fig.height=8,fig.width=8,message=FALSE,warning=FALSE}
+
+library(rsample)
+#the following code chunk splits the data into two. Replace ... with your data frame that contains the data
+set.seed(2345)
+train_test_split <- initial_split(userdata_train2, prop = 0.5)
+testing <- testing(train_test_split) #50% of the data is set aside for testing
+training <- training(train_test_split) #50% of the data is set aside for training
+
+#Fit k-means to each dataset and compare your results
+
+model_kmeans_testing<-eclust(testing, "kmeans", k = 4,nstart = 50, graph = FALSE)
+
+model_kmeans_training<-eclust(training, "kmeans", k = 4,nstart = 50, graph = FALSE)
+
+cluster_centers_test <- data.frame(cluster=as.factor(c(1:4)),model_kmeans_testing$centers)
+
+#transpose this data frame
+cluster_centers_testing <- cluster_centers_test %>% gather(variable,value,-cluster,factor_key = TRUE)
+
+#plot the centers
+graphkmeans_testing <- ggplot(cluster_centers_testing, aes(x = variable, y = value))+  
+  geom_line(aes(color =cluster,group = cluster), linetype = "dashed",size=1)+     
+  geom_point(size=1,shape=4)+ 
+  geom_hline(yintercept=0)+
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  labs(title = "K-means k=2 testing set",
+       x = "Variable", y = "Mean value") +
+  guides(color=guide_legend("Cluster"))
+  
+
+
+cluster_centers_train <- data.frame(cluster=as.factor(c(1:4)),model_kmeans_training$centers)
+
+#transpose this data frame
+cluster_centers_training <- cluster_centers_train %>% gather(variable,value,-cluster,factor_key = TRUE)
+
+#plot the centers
+graphkmeans_training <- ggplot(cluster_centers_training, aes(x = variable, y = value))+  
+  geom_line(aes(color =cluster,group = cluster), linetype = "dashed",size=1)+     
+  geom_point(size=1,shape=4)+ 
+  geom_hline(yintercept=0)+
+  theme_minimal() +
+  theme(text = element_text(size=10),
+        axis.text.x = element_text(angle=45, hjust=1),
+        plot.title = element_text(size = 13, face = "bold"))+
+  labs(title = "K-means k=2 training set",
+       x = "Variable", y = "Mean value") +
+  guides(color=guide_legend("Cluster"))
+  
+
+
+grid.arrange(graphkmeans_training,graphkmeans_testing,ncol = 1)
+```
+
+>Question 8: Based on the results, what can you conclude? Are you more or less confident in your results?
+
+Generally, although we can observe a change in the value of the centres, most signature characteristics of the clusters remain the same. The peaks of clusters are found at similar positions, and the difference is within an acceptable range (still representative for the clustering result of k-means and are prominently different from the other methods). Given their replicability, we can be more confident in the results obtained in our analysis above. 
+
+
+# Conclusions
+
+>Question 9: In plain English, explain which clusters you can confidently conclude that exist in the data, based on all your analysis in this exercise.
+
+Based on the analysis we have conducted of this dataset, there are certain clusters that we can confidently conclude exist within the data. The first of these is the ‘drama’ cluster, which is characterised by a high value of ‘total time’ and prefer to watch in the evening, which can be observed in several of our cluster plots. Additionally, we can be confident that there are clusters for ‘news’ and ‘comedy’ watchers - these are characterised by high and low ‘total times’ respectively. 
+
+>Do you think you chose the right `k`? Explain you reasoning.
+
+Our chosen k value is k=4 - this has been selected based on the combination of results from the elbow chart and the silhouette method. A value of k=4 gives us the most consistently good result in our analysis and also ensures that we are not over or underfitting our data. Notably, a k value of 4 gives us clusters that have considerably less overlap (and therefore greater differentiation) than k=5 - and therefore k=4 gives us greater explanatory power and interpretability. Overall, the best method used for clustering is the k-means method with k=4. This is because the k-means method accurately defines the most clusters - the PAM method for example, fails to accurately identify the ‘children’ cluster. The k-means method is also not overly affected by outliers as we have used a log-transformation to reduce distances between outliers and cluster centres. 
+
+>What assumptions do you think your results are sensitive to? How can you check the robustness of your conclusions? Just explain, you don't have to carry out the analysis.
+
+Our conclusions and results are sensitive to the following assumptions: 
+
+Assumption 1 - We assume each viewer only belongs to one single cluster. However, people’s taste and behaviour are complex, and they could possess features of multiple clusters. People’s behaviour may also change over time. 
+Assumption 2 - We must assume that the variables analysed in this report are the only crucial parameters for clustering. For example at high k, we may observe very similar clusters and decide that this is not an optimal representation of the population. However, in real life there may be other attributes that differentiate these two clusters, which means that in fact they are not overfitting the data.
+
+It is important to understand that there may be further variables that should be analysed. We can check the robustness of our results/conclusions by analysing subsamples. If we split the data into a training and testing dataset, we can perform clustering analysis on both sets and see if the split of clustering and characteristics of clusters are similar. 
+
+
+>Finally explain how the information about these clusters can be used to improve viewer experience for BBC or other online video streaming services.
+
+Finally, the information from this cluster analysis can be used to help us build a recommendation system for iPlayer (and/or other streaming services). By using our clusters and our conclusions relating to user preferences we can: 
+
+* Recommend general materials and genres (sport, drama, etc.) to people within the appropriate clusters, creating better recommendations and improving user experience. 
+
+* Target recommendations and push notifications during times when we expect users (within given clusters) to be active. 
+
+* Make future predictions about viewership of certain genres which allow for better tailored services - produce new drama shows if there is a considerable upward trend in the number of people who are watching drama (within the drama cluster). 
+
+
