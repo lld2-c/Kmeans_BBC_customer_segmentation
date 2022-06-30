@@ -4,8 +4,7 @@
 
 ## **TLDR**:coffee:	 
 - This project aims to support BBC's mission to inform, educate, and entertain the UK population as a public service provider. Instead of financial profitability, the focus is to make the program offering of BBC iPlayer more engaging for the wider public. A classification model is implemented for customer segmentation based on streaming data. 
-
-<img src="picture/kmeans.png" width = 800/>
+<img src="picture/kmeans.png" align = "center" width = 800/>
 
 ## Project definition
 - **Background:**  BBC iPlayer, a digital TV streaming service, is a convenient way to deliver content to the public. The streaming service allows BBC to better monitor public engagement than traditional terrestrial broadcasting. 
